@@ -125,6 +125,105 @@ func NewCmdControllerEnvironment(commonOpts *opts.CommonOptions) *cobra.Command 
 	return cmd
 }
 
+// Function to poll Github for push changes in the polling window
+func (o *ControllerEnvironmentOptions) startPolling() error {
+	gitURL := o.SourceURL
+	var provider gits.GitProvider
+	var err error
+
+	if o.GitKind != "" {
+		gitInfo, err := gits.ParseGitURL(gitURL)
+		if err != nil {
+			return err
+		}
+		gitHostURL := gitInfo.HostURL()
+		ghOwner, err := o.GetGitHubAppOwner(gitInfo)
+		if err != nil {
+			return err
+		}
+		provider, err = o.GitProviderForGitServerURL(gitHostURL, o.GitKind, ghOwner)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create git provider for git URL %s kind %s", gitHostURL, o.GitKind)
+		}
+	} else {
+		provider, err = o.GitProviderForURL(gitURL, "creating git provider")
+		if err != nil {
+			return errors.Wrapf(err, "failed to create git provider for git URL %s", gitURL)
+		}
+	}
+
+	const layout = "Jan 2, 2006 at 3:04pm (MST)"
+	for {
+		// sleep for polling window
+		const POLLING_WINDOW_SECONDS int = 120
+		time.Sleep(time.Duration(POLLING_WINDOW_SECONDS) * time.Second)
+		log.Logger().Infof("Polling for Push Events...")
+
+		// call Github for events and filter to latest push event
+		latestPushes, err := provider.GetLatestPushEvent(o.GitOwner, o.GitRepo)
+		if err != nil {
+			return errors.Wrapf(err, "listing events for %s/%s", o.GitOwner, o.GitRepo)
+		}
+
+		for _, push := range latestPushes {
+			log.Logger().Infof("Last push detected at %s", (push.CreatedAt).Format(layout))
+		}
+
+		// trigger
+		now := time.Now()
+		if (latestPushes != nil) && (now.Sub(latestPushes[0].CreatedAt) <= (time.Duration(POLLING_WINDOW_SECONDS)*time.Second)) {
+			// start pipeline
+			log.Logger().Infof("Triggering pipeline...")
+
+			err := o.stepGitCredentials()
+			if err != nil {
+				log.Logger().Warn(err.Error())
+			}
+
+			sourceURL := o.SourceURL
+			branch := o.Branch
+			revision := "master"
+			scCopy := o.StepCreateTaskOptions
+			pr := &scCopy
+			coCopy := *o.CommonOptions
+			pr.CommonOptions = &coCopy
+
+			// defaults
+			pr.PipelineKind = jenkinsfile.PipelineKindRelease
+			pr.SourceName = "source"
+			pr.Duration = time.Second * 20
+			pr.CloneGitURL = sourceURL
+			pr.DeleteTempDir = true
+			pr.Branch = branch
+			pr.Revision = revision
+			pr.RemoteCluster = true
+			pr.DisableConcurrent = true
+
+			// turn map into string array with = separator to match type of custom labels which are CLI flags
+			for key, value := range o.Labels {
+				pr.CustomLabels = append(pr.CustomLabels, fmt.Sprintf("%s=%s", key, value))
+			}
+
+			pipelineLock.Lock()
+			log.Logger().Infof("triggering pipeline for repo %s branch %s revision %s", sourceURL, branch, revision)
+			err = pr.Run()
+			pipelineLock.Unlock()
+
+			if err != nil {
+				log.Logger().Infof("Error:")
+				log.Logger().Infof(err.Error())
+				// return errors.Wrapf(err, "Error with pipeline run for %s/%s", o.GitOwner, o.GitRepo)
+			}
+
+			results := &pipeline.PipelineRunResponse{
+				Resources: pr.Results.ObjectReferences(),
+			}
+			log.Logger().Infof("results length %d", len(results.Resources))
+		}
+	}
+	return nil
+}
+
 // Run will implement this command
 func (o *ControllerEnvironmentOptions) Run() error {
 	o.RemoteCluster = true
@@ -245,6 +344,9 @@ func (o *ControllerEnvironmentOptions) Run() error {
 	mux.Handle(o.Path, http.HandlerFunc(o.handleWebHookRequests))
 
 	log.Logger().Infof("Environment Controller is now listening on %s for WebHooks from the source repository %s to trigger promotions", util.ColorInfo(util.UrlJoin(o.WebHookURL, o.Path)), util.ColorInfo(o.SourceURL))
+
+	go o.startPolling()
+
 	return http.ListenAndServe(":"+strconv.Itoa(o.Port), mux)
 }
 

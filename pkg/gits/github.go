@@ -1504,6 +1504,13 @@ func (p *GitHubProvider) toProject(project *github.Project, state string) GitPro
 	}
 }
 
+func (p *GitHubProvider) toEvent(event *github.Event) GitEvent {
+	return GitEvent{
+		Type:        event.GetType(),
+		CreatedAt:   event.GetCreatedAt(),
+	}
+}
+
 //ConfigureFeatures sets specific features as enabled or disabled for owner/repo
 func (p *GitHubProvider) ConfigureFeatures(owner string, repo string, issues *bool, projects *bool, wikis *bool) (*GitRepository, error) {
 	r, _, err := p.Client.Repositories.Get(p.Context, owner, repo)
@@ -1547,4 +1554,23 @@ func (p *GitHubProvider) IsWikiEnabled(owner string, repo string) (bool, error) 
 		return false, errors.Wrapf(err, "cloning %s", gitURL)
 	}
 	return true, nil
+}
+
+// GetLatestPushEvent returns the latest Push event for owner/repo
+func (p *GitHubProvider) GetLatestPushEvent(owner string, repo string) ([]GitEvent, error) {
+	latestEvents := make([]GitEvent, 0)
+	opt := &github.ListOptions{Page: 1}
+	events, _, err := p.Client.Activity.ListRepositoryEvents(p.Context, owner, repo, opt)
+	if err != nil {
+		return nil, errors.Wrapf(err, "listing events for %s/%s", owner, repo)
+	}
+
+	for _, event := range events {
+		// log.Logger().Infof("Event type %s", event.GetType())
+		if event.GetType() == "PushEvent" {
+			latestEvents = append(latestEvents, p.toEvent(event))
+			break
+		}
+	}
+	return latestEvents, nil
 }

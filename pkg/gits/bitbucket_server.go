@@ -1183,3 +1183,8 @@ func (b *BitbucketServerProvider) ConfigureFeatures(owner string, repo string, i
 func (b *BitbucketServerProvider) IsWikiEnabled(owner string, repo string) (bool, error) {
 	return false, nil
 }
+
+// GetLatestPushEvent returns the latest Push event for owner/repo
+func (p *BitbucketServerProvider) GetLatestPushEvent(owner string, repo string) ([]GitEvent, error) {
+	return nil, nil
+}

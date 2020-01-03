@@ -834,3 +834,8 @@ func (p *GiteaProvider) ConfigureFeatures(owner string, repo string, issues *boo
 func (p *GiteaProvider) IsWikiEnabled(owner string, repo string) (bool, error) {
 	return false, nil
 }
+
+// GetLatestPushEvent returns the latest Push event for owner/repo
+func (p *GiteaProvider) GetLatestPushEvent(owner string, repo string) ([]GitEvent, error) {
+	return nil, nil
+}

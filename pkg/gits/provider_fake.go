@@ -1006,3 +1006,8 @@ func (f *FakeProvider) UploadReleaseAsset(org string, repo string, id int64, nam
 func (f *FakeProvider) GetBranch(owner string, repo string, branch string) (*GitBranch, error) {
 	return nil, nil
 }
+
+// GetLatestPushEvent returns the latest Push event for owner/repo
+func (p *FakeProvider) GetLatestPushEvent(owner string, repo string) ([]GitEvent, error) {
+	return nil, nil
+}

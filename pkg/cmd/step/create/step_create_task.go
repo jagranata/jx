@@ -221,6 +221,7 @@ func (o *StepCreateTaskOptions) AddCommonFlags(cmd *cobra.Command) {
 
 // Run implements this command
 func (o *StepCreateTaskOptions) Run() error {
+
 	if o.NoApply == nil {
 		b := viper.GetBool(noApplyOptionName)
 		o.NoApply = &b

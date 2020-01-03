@@ -373,3 +373,8 @@ func (p *GerritProvider) ConfigureFeatures(owner string, repo string, issues *bo
 func (p *GerritProvider) IsWikiEnabled(owner string, repo string) (bool, error) {
 	return false, nil
 }
+
+// GetLatestPushEvent returns the latest Push event for owner/repo
+func (p *GerritProvider) GetLatestPushEvent(owner string, repo string) ([]GitEvent, error) {
+	return nil, nil
+}

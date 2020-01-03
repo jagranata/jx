@@ -875,3 +875,8 @@ func (g *GitlabProvider) ConfigureFeatures(owner string, repo string, issues *bo
 func (g *GitlabProvider) IsWikiEnabled(owner string, repo string) (bool, error) {
 	return false, nil
 }
+
+// GetLatestPushEvent returns the latest Push event for owner/repo
+func (p *GitlabProvider) GetLatestPushEvent(owner string, repo string) ([]GitEvent, error) {
+	return nil, nil
+}

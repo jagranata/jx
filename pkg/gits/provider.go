@@ -226,6 +226,12 @@ type GitProject struct {
 	State       string
 }
 
+// GitEvent is an repo event
+type GitEvent struct {
+	Type        string
+	CreatedAt   time.Time
+}
+
 // IsClosed returns true if the PullRequest has been closed
 func (pr *GitPullRequest) IsClosed() bool {
 	return pr.ClosedAt != nil

@@ -171,6 +171,8 @@ type GitProvider interface {
 	IsWikiEnabled(owner string, repo string) (bool, error)
 
 	ConfigureFeatures(owner string, repo string, issues *bool, projects *bool, wikis *bool) (*GitRepository, error)
+
+	GetLatestPushEvent(owner string, repo string) ([]GitEvent, error)
 }
 
 // Gitter defines common git actions used by Jenkins X via git cli
